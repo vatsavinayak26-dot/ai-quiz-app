@@ -57,7 +57,14 @@
       <h1>AI Quiz Generator</h1>
       <p class="subtitle">Paste notes below to instantly build and take a revision quiz.</p>
       <textarea id="notes-input" placeholder="Paste your study notes here..." rows="8"></textarea>
-      
+      <div style="margin: 0.8rem 0;">
+        <button type="button" id="camera-btn" style="cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: #e2e8f0; padding: 0.6rem 1rem; border: none; border-radius: 6px; font-weight: 600; width: 100%;">
+          📸 <span>Scan Notes with Camera</span>
+          <span style="background: #f59e0b; color: #fff; font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;">PRO</span>
+        </button>
+        <input type="file" id="camera-input" accept="image/*" capture="environment" style="display: none;" />
+        <span id="file-name" style="font-size: 0.82rem; color: #64748b; margin-top: 0.3rem; display: block;"></span>
+      </div>
       <div class="controls">
         <div class="control-group">
           <label for="difficulty">Difficulty:</label>
@@ -167,21 +174,22 @@
 
     generateBtn.addEventListener('click', async () => {
       const notes = notesInput.value.trim();
-      if (!notes) return alert('Please enter some notes first.');
+    if (!notes && !base64Image) return alert('Please enter some notes or attach an image first.');
 
-      generateBtn.disabled = true;
-      spinner.classList.remove('hidden');
+    generateBtn.disabled = true;
+    spinner.classList.remove('hidden');
 
-      try {
-        const response = await fetch('/api/generate-quiz', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            notes,
-            difficulty: difficultySelect.value,
-            count: parseInt(countSelect.value)
-          })
-        });
+    try {
+      const response = await fetch('/api/generate-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          notes: notes,
+          image: base64Image,
+          difficulty: difficultySelect.value,
+          numQuestions: parseInt(countSelect.value)
+        })
+      });
 
         const data = await response.json();
         if (!data.success) throw new Error(data.error);
@@ -345,8 +353,49 @@
           countSelect.add(new Option("25 Questions (Pro)", "25"));
         }
       }
+      let base64Image = null;
+
+const cameraBtn = document.getElementById('camera-btn');
+const cameraInput = document.getElementById('camera-input');
+const fileNameDisplay = document.getElementById('file-name');
+
+if (cameraBtn) {
+  cameraBtn.addEventListener('click', () => {
+    const isPro = localStorage.getItem('is_pro_user') === 'true';
+    if (!isPro) {
+      if (proModal) {
+        proModal.classList.remove('hidden');
+      } else {
+        alert("Camera note scanning is a Pro feature! Upgrade to unlock.");
+      }
+      return;
+    }
+    cameraInput.click();
+  });
+}
+
+if (cameraInput) {
+  cameraInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (fileNameDisplay) fileNameDisplay.textContent = `Attached: ${file.name}`;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      base64Image = {
+        inlineData: {
+          data: reader.result.split(',')[1],
+          mimeType: file.type || 'image/jpeg'
+        }
+      };
+    };
+    reader.readAsDataURL(file);
+  });
+}
     }
     checkProStatus();
+    
   </script>
 </body>
 </html>
