@@ -30,9 +30,14 @@ Study Notes:
 ${notes}`;
 
   try {
+    const parts = [{ text: prompt }];
+    if (req.body.image && req.body.image.inlineData) {
+      parts.push(req.body.image);
+    }
+
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash"
-      contents: prompt,
+      model: "gemini-2.0-flash",
+      contents: parts,
     });
 
     let rawText = response.text.trim();
