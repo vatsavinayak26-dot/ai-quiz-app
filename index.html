@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Quiz Generator</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: #f4f6f8; color: #1e293b; display: flex; justify-content: center; padding: 2rem 1rem; }
+    .container { width: 100%; max-width: 640px; background: #ffffff; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); position: relative; }
+    .hidden { display: none !important; }
+    h1 { font-size: 1.6rem; margin-bottom: 0.5rem; }
+    .subtitle { color: #64748b; margin-bottom: 1.5rem; font-size: 0.95rem; }
+    textarea { width: 100%; padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; resize: vertical; font-size: 0.95rem; }
+    .controls { display: flex; gap: 1rem; margin: 1rem 0 1.5rem; }
+    .control-group { flex: 1; display: flex; flex-direction: column; gap: 0.35rem; }
+    select { padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; }
+    .primary-btn { width: 100%; padding: 0.8rem; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .primary-btn:hover { background: #1d4ed8; }
+    .primary-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+    .quiz-header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 700; color: #64748b; margin-bottom: 1rem; text-transform: uppercase; }
+    .timer-badge { background: #e2e8f0; color: #0f172a; padding: 0.25rem 0.6rem; border-radius: 9999px; font-weight: 700; }
+    .timer-badge.warning { background: #fee2e2; color: #dc2626; }
+    #question-text { font-size: 1.2rem; margin-bottom: 1.5rem; }
+    .options-grid { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
+    .option-btn { width: 100%; text-align: left; padding: 0.85rem; border: 2px solid #e2e8f0; border-radius: 8px; background: #fff; cursor: pointer; font-size: 0.95rem; }
+    .option-btn:hover { border-color: #93c5fd; background: #eff6ff; }
+    .option-btn.selected { border-color: #2563eb; background: #dbeafe; font-weight: 600; }
+    .score-card { text-align: center; margin: 2rem 0; padding: 1.5rem; background: #f8fafc; border-radius: 8px; }
+    .large-score { font-size: 2.5rem; font-weight: 800; color: #2563eb; }
+    .review-item { margin-bottom: 1rem; padding: 1rem; border-left: 4px solid #cbd5e1; background: #f8fafc; border-radius: 0 6px 6px 0; }
+    .review-item.correct { border-color: #16a34a; }
+    .review-item.incorrect { border-color: #dc2626; }
+    .pro-badge-btn { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; padding: 0.4rem 0.8rem; border-radius: 20px; font-weight: 700; font-size: 0.85rem; cursor: pointer; margin-bottom: 1rem; display: inline-block; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 999; }
+    .modal-box { background: #fff; border-radius: 12px; max-width: 400px; width: 100%; padding: 1.5rem; position: relative; text-align: center; }
+    .close-btn { position: absolute; top: 10px; right: 14px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b; }
+    .pro-perks { text-align: left; list-style: none; margin: 1rem 0; color: #334155; font-size: 0.9rem; line-height: 1.6; }
+    .qr-wrapper { margin: 1rem 0; background: #f8fafc; padding: 1rem; border-radius: 8px; display: flex; flex-direction: column; align-items: center; }
+    .qr-wrapper img { width: 170px; height: 170px; border-radius: 6px; margin-bottom: 0.5rem; }
+    .qr-wrapper p { font-size: 0.8rem; color: #64748b; }
+    .phonepe-btn { display: block; text-decoration: none; background: #5f259f; margin-bottom: 1rem; }
+    .phonepe-btn:hover { background: #4d1d82; }
+    .verify-box { border-top: 1px solid #e2e8f0; padding-top: 1rem; text-align: left; }
+    .verify-label { font-size: 0.8rem; color: #475569; margin-bottom: 0.5rem; }
+    .input-row { display: flex; gap: 0.5rem; }
+    .input-row input { flex: 1; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; }
+    .small-btn { width: auto; padding: 0.5rem 1rem; }
+    #activation-msg { display: block; margin-top: 0.5rem; font-size: 0.8rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button id="open-pro-btn" class="pro-badge-btn">⚡ Upgrade to Pro (₹49)</button>
+
+    <section id="input-screen" class="screen">
+      <h1>AI Quiz Generator</h1>
+      <p class="subtitle">Paste notes below to instantly build and take a revision quiz.</p>
+      <textarea id="notes-input" placeholder="Paste your study notes here..." rows="8"></textarea>
+      
+      <div class="controls">
+        <div class="control-group">
+          <label for="difficulty">Difficulty:</label>
+          <select id="difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+        <div class="control-group">
+          <label for="question-count">Questions:</label>
+          <select id="question-count">
+            <option value="3">3 Questions</option>
+            <option value="5" selected>5 Questions</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="generate-btn" class="primary-btn">Generate Quiz</button>
+      <p id="loading-spinner" class="subtitle hidden" style="margin-top: 1rem; text-align: center;">Generating questions...</p>
+    </section>
+
+    <section id="quiz-screen" class="screen hidden">
+      <div class="quiz-header">
+        <span id="question-progress">Question 1</span>
+        <span id="timer" class="timer-badge">15s</span>
+      </div>
+      <h2 id="question-text"></h2>
+      <div id="options-container" class="options-grid"></div>
+      <button id="next-btn" class="primary-btn" disabled>Next Question</button>
+    </section>
+
+    <section id="results-screen" class="screen hidden">
+      <h2>Quiz Complete!</h2>
+      <div class="score-card">
+        <div id="score-display" class="large-score">0 / 0</div>
+        <p id="percentage-display">0%</p>
+      </div>
+      <div id="review-container"></div>
+      <button id="restart-btn" class="primary-btn">Create Another Quiz</button>
+    </section>
+
+    <div id="pro-modal" class="modal-overlay hidden">
+      <div class="modal-box">
+        <button id="close-modal-btn" class="close-btn">&times;</button>
+        <h3>Unlock AI Quiz Pro ⚡</h3>
+        <ul class="pro-perks">
+          <li>✓ Generate up to 15 &amp; 25 questions</li>
+          <li>✓ Unlocks hard-difficulty mode</li>
+          <li>✓ Lifetime access</li>
+        </ul>
+        <div class="qr-wrapper">
+          <img id="upi-qr" src="" alt="Scan with PhonePe" />
+          <p>Scan with <strong>PhonePe / GPay / Paytm</strong></p>
+        </div>
+        <a id="upi-pay-link" class="primary-btn phonepe-btn" href="#">Pay ₹49 via PhonePe / UPI</a>
+        <div class="verify-box">
+          <p class="verify-label">Paid already? Enter the <strong>12-digit UTR</strong>:</p>
+          <div class="input-row">
+            <input type="text" id="utr-input" placeholder="e.g. 425619283741" maxlength="16" />
+            <button id="verify-pro-btn" class="primary-btn small-btn">Activate</button>
+          </div>
+          <small id="activation-msg" class="hidden"></small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const MY_UPI_ID = "yourname@ybl";
+    const PRO_PRICE = 49;
+    const TIME_PER_QUESTION = 15;
+
+    let quizData = [];
+    let currentIndex = 0;
+    let userAnswers = [];
+    let selectedAnswerIndex = null;
+    let timeLeft = TIME_PER_QUESTION;
+    let timerInterval = null;
+
+    const inputScreen = document.getElementById('input-screen');
+    const quizScreen = document.getElementById('quiz-screen');
+    const resultsScreen = document.getElementById('results-screen');
+    const notesInput = document.getElementById('notes-input');
+    const difficultySelect = document.getElementById('difficulty');
+    const countSelect = document.getElementById('question-count');
+    const generateBtn = document.getElementById('generate-btn');
+    const spinner = document.getElementById('loading-spinner');
+    const progressEl = document.getElementById('question-progress');
+    const timerEl = document.getElementById('timer');
+    const questionTextEl = document.getElementById('question-text');
+    const optionsContainer = document.getElementById('options-container');
+    const nextBtn = document.getElementById('next-btn');
+    const scoreDisplay = document.getElementById('score-display');
+    const percentageDisplay = document.getElementById('percentage-display');
+    const reviewContainer = document.getElementById('review-container');
+    const restartBtn = document.getElementById('restart-btn');
+
+    const openProBtn = document.getElementById('open-pro-btn');
+    const proModal = document.getElementById('pro-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    const upiQrImg = document.getElementById('upi-qr');
+    const upiPayLink = document.getElementById('upi-pay-link');
+    const utrInput = document.getElementById('utr-input');
+    const verifyProBtn = document.getElementById('verify-pro-btn');
+    const activationMsg = document.getElementById('activation-msg');
+
+    generateBtn.addEventListener('click', async () => {
+      const notes = notesInput.value.trim();
+      if (!notes) return alert('Please enter some notes first.');
+
+      generateBtn.disabled = true;
+      spinner.classList.remove('hidden');
+
+      try {
+        const response = await fetch('/api/generate-quiz', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            notes,
+            difficulty: difficultySelect.value,
+            count: parseInt(countSelect.value)
+          })
+        });
+
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+
+        quizData = data.quiz;
+        currentIndex = 0;
+        userAnswers = [];
+
+        inputScreen.classList.add('hidden');
+        quizScreen.classList.remove('hidden');
+        renderQuestion();
+      } catch (err) {
+        alert('Failed to generate quiz. Make sure your server is running.');
+      } finally {
+        generateBtn.disabled = false;
+        spinner.classList.add('hidden');
+      }
+    });
+
+    function startTimer() {
+      clearInterval(timerInterval);
+      timeLeft = TIME_PER_QUESTION;
+      updateTimerUI();
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        updateTimerUI();
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          userAnswers.push(selectedAnswerIndex !== null ? selectedAnswerIndex : -1);
+          advanceQuestion();
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      clearInterval(timerInterval);
+    }
+
+    function updateTimerUI() {
+      timerEl.textContent = `${timeLeft}s`;
+      if (timeLeft <= 5) {
+        timerEl.classList.add('warning');
+      } else {
+        timerEl.classList.remove('warning');
+      }
+    }
+
+    function renderQuestion() {
+      selectedAnswerIndex = null;
+      nextBtn.disabled = true;
+
+      const q = quizData[currentIndex];
+      progressEl.textContent = `Question ${currentIndex + 1} of${quizData.length}`;
+      questionTextEl.textContent = q.question;
+      optionsContainer.innerHTML = '';
+
+      q.options.forEach((optText, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = optText;
+        btn.addEventListener('click', () => {
+          selectedAnswerIndex = index;
+          document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          nextBtn.disabled = false;
+        });
+        optionsContainer.appendChild(btn);
+      });
+
+      startTimer();
+    }
+
+    function advanceQuestion() {
+      stopTimer();
+      currentIndex++;
+      if (currentIndex < quizData.length) {
+        renderQuestion();
+      } else {
+        showResults();
+      }
+    }
+
+    nextBtn.addEventListener('click', () => {
+      userAnswers.push(selectedAnswerIndex);
+      advanceQuestion();
+    });
+
+    function showResults() {
+      stopTimer();
+      quizScreen.classList.add('hidden');
+      resultsScreen.classList.remove('hidden');
+
+      let correctCount = 0;
+      reviewContainer.innerHTML = '';
+
+      quizData.forEach((q, i) => {
+        const chosen = userAnswers[i];
+        const isCorrect = chosen === q.correctIndex;
+        if (isCorrect) correctCount++;
+
+        const userText = chosen === -1 ? 'Time Expired (No selection)' : q.options[chosen];
+        const div = document.createElement('div');
+        div.className = `review-item ${isCorrect ? 'correct' : 'incorrect'}`;
+        div.innerHTML = `
+          <strong>Q${i + 1}:${q.question}</strong><br>
+          Your Answer: <em>${userText}</em><br>${!isCorrect ? `Correct: <em>${q.options[q.correctIndex]}</em><br>` : ''}
+          <small>${q.explanation}</small>
+        `;
+        reviewContainer.appendChild(div);
+      });
+
+      scoreDisplay.textContent = `${correctCount} /${quizData.length}`;
+      percentageDisplay.textContent = `${Math.round((correctCount / quizData.length) * 100)}%`;
+    }
+
+    restartBtn.addEventListener('click', () => {
+      resultsScreen.classList.add('hidden');
+      inputScreen.classList.remove('hidden');
+      notesInput.value = '';
+    });
+
+    const upiDeepLink = `upi://pay?pa=${MY_UPI_ID}&pn=QuizApp&am=${PRO_PRICE}&cu=INR&tn=Pro_Upgrade`;
+
+    openProBtn.addEventListener('click', () => {
+      upiQrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiDeepLink)}`;
+      upiPayLink.href = upiDeepLink;
+      proModal.classList.remove('hidden');
+    });
+
+    closeModalBtn.addEventListener('click', () => {
+      proModal.classList.add('hidden');
+    });
+
+    verifyProBtn.addEventListener('click', () => {
+      const utr = utrInput.value.trim();
+      if (utr.length < 10) {
+        activationMsg.textContent = 'Enter a valid 12-digit UTR / Ref Number.';
+        activationMsg.style.color = '#dc2626';
+        activationMsg.classList.remove('hidden');
+        return;
+      }
+      localStorage.setItem('is_pro_user', 'true');
+      activationMsg.textContent = 'Pro activated! Thank you.';
+      activationMsg.style.color = '#16a34a';
+      activationMsg.classList.remove('hidden');
+      setTimeout(() => {
+        proModal.classList.add('hidden');
+        checkProStatus();
+      }, 1000);
+    });
+
+    function checkProStatus() {
+      if (localStorage.getItem('is_pro_user') === 'true') {
+        openProBtn.textContent = '⭐ Pro Member';
+        openProBtn.disabled = true;
+        openProBtn.style.background = '#dcfce7';
+        openProBtn.style.color = '#15803d';
+        if (!document.getElementById('opt-15')) {
+          countSelect.add(new Option("15 Questions (Pro)", "15"));
+          countSelect.add(new Option("25 Questions (Pro)", "25"));
+        }
+      }
+    }
+    checkProStatus();
+  </script>
+</body>
+</html>
