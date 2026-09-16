@@ -51,6 +51,29 @@
 </head>
 <body>
   <div class="container">
+    <!-- Auth Bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding: 0.5rem 0.75rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+      <span id="user-status-text" style="font-size: 0.85rem; color: #475569; font-weight: 500;">👤 Guest Mode</span>
+      <button id="auth-action-btn" type="button" style="padding: 0.35rem 0.8rem; border-radius: 6px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-weight: 600; font-size: 0.85rem;">Sign In</button>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="hidden" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;">
+      <div style="background: #fff; border-radius: 10px; width: 90%; max-width: 360px; padding: 1.5rem; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <h3 id="auth-title" style="margin-bottom: 1rem; color: #1e293b;">Sign In</h3>
+        <input type="email" id="auth-email" placeholder="Email address" style="width: 100%; padding: 0.6rem; margin-bottom: 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" />
+        <input type="password" id="auth-password" placeholder="Password" style="width: 100%; padding: 0.6rem; margin-bottom: 1rem; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" />
+
+        <button id="auth-submit-btn" type="button" style="width: 100%; background: #2563eb; color: #fff; padding: 0.65rem; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">Sign In</button>
+        <button id="google-btn" type="button" style="width: 100%; background: #f8fafc; border: 1px solid #cbd5e1; padding: 0.65rem; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: 0.5rem;">Sign in with Google</button>
+
+        <p style="margin-top: 1rem; font-size: 0.85rem; color: #64748b;">
+          <span id="auth-switch-text">Don't have an account?</span> 
+          <a href="#" id="auth-toggle-link" style="color: #2563eb; font-weight: 600; text-decoration: none;">Sign Up</a>
+        </p>
+        <button id="close-auth-modal" type="button" style="margin-top: 0.6rem; background: none; border: none; color: #94a3b8; cursor: pointer;">Close</button>
+      </div>
+    </div>
     <button id="open-pro-btn" class="pro-badge-btn">⚡ Upgrade to Pro (₹49)</button>
 
     <section id="input-screen" class="screen">
@@ -397,5 +420,98 @@ if (cameraInput) {
     checkProStatus();
     
   </script>
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { 
+    getAuth, 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signInWithPopup, 
+    GoogleAuthProvider, 
+    onAuthStateChanged, 
+    signOut 
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDu-FKhresWD8BEVd-V2T0DJoJBP3OlVbI",
+    authDomain: "ai-quiz-app-ba53e.firebaseapp.com",
+    projectId: "ai-quiz-app-ba53e",
+    storageBucket: "ai-quiz-app-ba53e.firebasestorage.app",
+    messagingSenderId: "1052024196090",
+    appId: "1:1052024196090:web:6ab57a0c46fea142d07243",
+    measurementId: "G-MZW593FW1P"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+
+  let isSignUp = false;
+
+  const authModal = document.getElementById('auth-modal');
+  const userStatus = document.getElementById('user-status-text');
+  const authActionBtn = document.getElementById('auth-action-btn');
+  const authTitle = document.getElementById('auth-title');
+  const authSubmit = document.getElementById('auth-submit-btn');
+  const googleBtn = document.getElementById('google-btn');
+  const toggleLink = document.getElementById('auth-toggle-link');
+  const switchText = document.getElementById('auth-switch-text');
+  const closeBtn = document.getElementById('close-auth-modal');
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      userStatus.textContent = `👤 ${user.displayName || user.email}`;
+      authActionBtn.textContent = 'Sign Out';
+    } else {
+      userStatus.textContent = '👤 Guest Mode';
+      authActionBtn.textContent = 'Sign In';
+    }
+  });
+
+  authActionBtn.addEventListener('click', () => {
+    if (auth.currentUser) {
+      signOut(auth);
+    } else {
+      authModal.classList.remove('hidden');
+    }
+  });
+
+  closeBtn.addEventListener('click', () => authModal.classList.add('hidden'));
+
+  toggleLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    isSignUp = !isSignUp;
+    authTitle.textContent = isSignUp ? 'Create Account' : 'Sign In';
+    authSubmit.textContent = isSignUp ? 'Create Account' : 'Sign In';
+    switchText.textContent = isSignUp ? 'Already have an account?' : "Don't have an account?";
+    toggleLink.textContent = isSignUp ? 'Sign In' : 'Sign Up';
+  });
+
+  authSubmit.addEventListener('click', async () => {
+    const email = document.getElementById('auth-email').value.trim();
+    const password = document.getElementById('auth-password').value.trim();
+    if (!email || !password) return alert('Please enter both email and password.');
+
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      authModal.classList.add('hidden');
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+
+  googleBtn.addEventListener('click', async () => {
+    try {
+      await signInWithPopup(auth, provider);
+      authModal.classList.add('hidden');
+    } catch (err) {
+      alert(err.message);
+    }
+  });
+</script>
 </body>
 </html>
